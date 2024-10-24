@@ -123,28 +123,12 @@ export class WorkOsAuthProvider implements AuthenticationProvider, Disposable {
     return decodedToken.exp * 1000 < Date.now();
   }
 
-  private async serverThinksAccessTokenIsValid(
-    accessToken: string,
-  ): Promise<boolean> {
-    const url = new URL(CONTROL_PLANE_URL);
-    url.pathname = "/hello-secure";
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    return response.status === 200;
-  }
-
   private async debugAccessTokenValidity(jwt: string, refreshToken: string) {
     const expired = this.jwtIsExpired(jwt);
-    const serverThinksInvalid = await this.serverThinksAccessTokenIsValid(jwt);
-    if (expired || serverThinksInvalid) {
-      console.debug(`Invalid JWT: ${expired}, ${serverThinksInvalid}`);
+    if (expired) {
+      console.debug(`Invalid JWT: ${expired}`);
     } else {
-      console.debug(`Valid JWT: ${expired}, ${serverThinksInvalid}`);
+      console.debug(`Valid JWT: ${expired}`);
     }
   }
 
@@ -265,6 +249,13 @@ export class WorkOsAuthProvider implements AuthenticationProvider, Disposable {
     };
   }
 
+  private _formatProfileLabel(
+    firstName: string | null,
+    lastName: string | null,
+  ) {
+    return ((firstName ?? "") + " " + (lastName ?? "")).trim();
+  }
+
   /**
    * Create a new auth session
    * @param scopes
@@ -291,7 +282,7 @@ export class WorkOsAuthProvider implements AuthenticationProvider, Disposable {
         expiresInMs: this.getExpirationTimeMs(access_token),
         loginNeeded: false,
         account: {
-          label: user.first_name + " " + user.last_name,
+          label: this._formatProfileLabel(user.first_name, user.last_name),
           id: user.email,
         },
         scopes: [],
